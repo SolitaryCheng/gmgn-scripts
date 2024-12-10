@@ -3,12 +3,12 @@
  * @author: Cheng
  * @x: https://x.com/SolitaryCheng
  * @date: 2024-12-03
- * @update: 2024-12-05
+ * @update: 2024-12-11
  */
 (async()=>{
     let WALLET = ''; // 钱包地址，若留空则从当前 URL 中提取
     if(!WALLET){
-        WALLET = window.location.pathname.slice(-44);
+        WALLET = window.location.pathname.split('/').pop().split('_').pop();
         console.log(`🔑 从 URL 中提取钱包地址: ${WALLET}`);
     }
     const CAPITAL = 0; // 本金（美元）
@@ -53,6 +53,8 @@
             `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     };
 
+    LOGS.push(`## ${PERIOD === 'all' ? '全部' : `${PERIOD} `}盈亏明细 ##`, '');
+
     // 获取所有盈亏记录
     async function getRecords(cursor = ''){
         const url = `https://gmgn.ai/api/v1/wallet_holdings/sol/${WALLET}?limit=50&orderby=last_active_timestamp&direction=desc&showsmall=true&sellout=true&tx30d=true${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
@@ -93,7 +95,7 @@
         }
     }
     await getRecords();
-    console.log('所有盈亏记录:', RECORDS);
+    console.log('盈亏明细:', RECORDS);
 
     // 计算每日收益汇总
     const dailyProfitSummary = records => 
@@ -110,7 +112,7 @@
         }));
 
     LOGS.push('', '--------------------------------', '');
-    LOGS.push('## 高光时刻 ##', HIGHLIGHTS.map(({timestamp, profit, realized_pnl, symbol}) => 
+    LOGS.push(`## ${PERIOD === 'all' ? '全部' : `${PERIOD} `}高光时刻 ##`, '', HIGHLIGHTS.map(({timestamp, profit, realized_pnl, symbol}) => 
         `${formatDate(timestamp, 'datetime')} ${symbol} ${profit > 0 ? '盈' : '亏'}: $${profit}（${realized_pnl}%）`
     ).join('\n'));
     LOGS.push('', '--------------------------------', '');
@@ -123,13 +125,19 @@
     );
     console.log('每日收益汇总:', summary);
     
-    const finalProfit = (totalBalance - CAPITAL).toFixed(2);
-    const finalLogs = [
-        `盈亏总计：$${finalProfit}`,
+    const finalProfit = totalBalance - CAPITAL;
+    const finalLogs = [`盈亏总计：$${totalBalance.toFixed(2)}`];
+    if(CAPITAL){
+        finalLogs.push(
+            `历史本金：$${CAPITAL.toFixed(2)}`,
+            `扣除本金：$${finalProfit.toFixed(2)}`
+        );
+    }
+    finalLogs.push(
         `盈亏次数：${profitCount}+, ${lossCount}-`,
         `盈亏天数：${profitDays}+, ${lossDays}-`,
         `统计周期：${PERIOD}`
-    ];
+    );
     LOGS.push(...finalLogs);
     finalLogs.forEach(log => console.log(log));
 
